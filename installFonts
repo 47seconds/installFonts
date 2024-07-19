@@ -1,0 +1,53 @@
+#!/bin/bash 
+
+localFonts=~/.local/share/fonts/
+updateLocalFontCache="fc-cache -fv &> /dev/null"
+globalFonts=/usr/share/fonts/
+updateGlobalFontCache="sudo fc-cache -fv &> /dev/null"
+fonts=()
+
+if [ $# -eq 0 ]; then
+	echo -e "Provide .zip arguments\n$0 -h or $0 --help for help"
+	exit 1
+elif [ ${1,,} == "-h" ] || [ ${1,,} == "--help" ]; then
+	echo -e "The font .zip file will be extracted and moved default to ~/.local/share/fonts/ for user specific fonts so '-l' or '--local' can be omitted\n$0 [.ZIP FONT FILE 1] [.ZIP FONT FILE 2]..."
+	echo -e "If want to install fonts system wide and move to /usr/share/fonts/, use '-g' or '--global' flags with sudo\nsudo $0 -g [.ZIP FONT FILE 1] [.ZIP FONT FILE 2]..."
+	exit 0
+else
+	installPath=$localFonts
+	updateFontCache=$updateLocalFontCache
+
+	for arg in "$@"; do
+		if [ "${arg,,}" == "-g" ] || [ "${arg,,}" == "--global" ]; then
+			    installPath=$globalFonts
+    			updateFontCache=$updateGlobalFontCache
+			continue
+		elif [ "${arg,,}" == "-l" ] || [ "${arg,,}" == "--local" ]; then
+			continue
+		else
+			fonts+=("$arg")
+		fi
+	done
+	
+	for font in "${fonts[@]}"; do
+		if [ ! -f "$font" ]; then
+			echo "WARNING: $font is not a font file"
+			continue
+		fi
+		
+		zipfile="$font"
+		extension=${zipfile##*.}
+
+		if [ "${extension,,}" != "zip" ]; then
+			echo "WARNING: $zipfile is not a .zip file. skipping..."
+			continue
+		fi
+
+		unzip "$zipfile" -d "${zipfile%%.zip}" &> /dev/null
+		rm $zipfile
+		mv "${zipfile%%.zip}" $installPath
+		eval "$updateFontCache"
+		echo "done"
+	done
+fi
+
